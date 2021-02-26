@@ -14,7 +14,7 @@ function DWGanttPdf() {
   const TASK_DATE_WIDTH = 60;
   const TASK_STATUS_WIDTH = 60;
   const TASK_PERCENT_WIDTH = 60;
-  const TASK_HOUR_WIDTH = 80;
+  const TASK_DAYS_WIDTH = 80;
 
   const TASK_COLORS = [
     '#2d74dc',
@@ -45,7 +45,7 @@ function DWGanttPdf() {
         status: statusIcons[task.status % statusIcons.length],
         progress: Math.ceil(task.progress * 100),
         style: number(styles[task.workType]) % TASK_COLORS.length,
-        calcHours: number(task.calcHours)
+        duration: Math.max(1, Math.ceil(parseFloat(task.duration) / 8.0))
       };
 
       if (task.type === gantt.config.types.project) {
@@ -233,8 +233,8 @@ function DWGanttPdf() {
     });
 
     rect.x += rect.w;
-    rect.w = TASK_HOUR_WIDTH;
-    pdf.drawText("Calc Hours", rect, {
+    rect.w = TASK_DAYS_WIDTH;
+    pdf.drawText("Working Days", rect, {
       fontName: "Montserrat-SemiBold", fontSize: 12, fontColor: '#464646', hAlign: 'center', vAlign: 'middle'
     });
   }
@@ -280,8 +280,8 @@ function DWGanttPdf() {
     });
 
     cellRect.x += cellRect.w;
-    cellRect.w = TASK_HOUR_WIDTH;
-    pdf.drawText(`${formatNumber(task.calcHours, 2, 'en')}`, cellRect, {
+    cellRect.w = TASK_DAYS_WIDTH;
+    pdf.drawText(`${formatNumber(task.duration, 0, 'en')}`, cellRect, {
       fontName: fontName, fontSize: 12, fontColor: '#464646', hAlign: 'center', vAlign: 'middle'
     });
 
