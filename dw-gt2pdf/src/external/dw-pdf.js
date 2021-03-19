@@ -67,7 +67,7 @@ function dwPdf(options) {
   }
 
   this.drawImage = function (src, rect, option) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       let image = new Image();
       image.onload = function () {
         if (option.fit) {
@@ -84,7 +84,7 @@ function dwPdf(options) {
         resolve();
       };
       image.onerror = function (e) {
-        reject(e);
+        resolve();
       }
       image.src = src;
     });

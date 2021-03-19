@@ -107,7 +107,13 @@ function DWGanttPdf() {
       endDate: endDate,
       taskCount: count,
       dayCount: dayCount
-    });
+    })
+      .then(() => {
+
+      })
+      .catch(err => {
+        console.error(err);
+      });
   }
 
   async function generate(fileName, data) {
