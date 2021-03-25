@@ -35,7 +35,12 @@ function DWGanttPdf() {
     let startDate = undefined, endDate = undefined;
     let title = options.title;
     let statusIcons = options.statusIcons;
+
     gantt.eachTask(task => {
+      if (options.ganttType && task.type === gantt.config.types.project && !task.$virtual) {
+        return;
+      }
+
       let taskData = {
         id: task.id,
         wbs: gantt.getWBSCode(task),
@@ -98,6 +103,7 @@ function DWGanttPdf() {
 
     let dayCount = Math.ceil(Math.abs((endDate - startDate) / (24 * 3600000)));
 
+    let pageSize = options.pageSize ? options.pageSize : { width: 1754, height: 1240 };
     generate(fileName, {
       icon: options.icon,
       logo: options.logo,
@@ -106,7 +112,8 @@ function DWGanttPdf() {
       startDate: startDate,
       endDate: endDate,
       taskCount: count,
-      dayCount: dayCount
+      dayCount: dayCount,
+      pageSize: pageSize
     })
       .then(() => {
 
@@ -117,9 +124,18 @@ function DWGanttPdf() {
   }
 
   async function generate(fileName, data) {
-    let pageWidth = GRID_WIDTH + SCALE_WIDTH * data.dayCount;
-    let pageHeight = TITLE_HEIGHT + SCALE_HEIGHT + LINE_HEIGHT * data.taskCount;
-    let orientation = pageWidth > pageHeight ? 'l' : 'p';
+    let realWidth = GRID_WIDTH + SCALE_WIDTH * data.dayCount;
+    let realHeight = TITLE_HEIGHT + SCALE_HEIGHT + LINE_HEIGHT * data.taskCount;
+    let orientation = realWidth > realHeight ? 'l' : 'p';
+    let pageWidth, pageHeight;
+    if (orientation === 'l') {
+      pageWidth = Math.max(realWidth, data.pageSize.width);
+      pageHeight = Math.max(realHeight, data.pageSize.height);
+    } else {
+      pageWidth = Math.max(realWidth, data.pageSize.height);
+      pageHeight = Math.max(realHeight, data.pageSize.width);
+    }
+
     let pdf = new dwPdf({orientation: orientation, unit: 'px', format: [pageWidth, pageHeight], lineHeight: 1.5});
 
     let {width, height} = pdf.getPageSize();
@@ -139,8 +155,11 @@ function DWGanttPdf() {
     let topScaleRect = {x: GRID_WIDTH, y: TITLE_HEIGHT, w: SCALE_WIDTH, h: LINE_HEIGHT};
     rect = {x: GRID_WIDTH, y: TITLE_HEIGHT + LINE_HEIGHT, w: SCALE_WIDTH, h: height - (TITLE_HEIGHT + LINE_HEIGHT)};
 
+    let count = Math.floor((width - GRID_WIDTH) / SCALE_WIDTH);
+    count = Math.max(data.dayCount, count);
+
     let date = new Date(data.startDate);
-    for (let i = 0; i < data.dayCount; i++) {
+    for (let i = 0; i < count; i++) {
       let scaleRect = pdf.cloneRect(rect);
       scaleRect.h = LINE_HEIGHT;
 
@@ -158,7 +177,7 @@ function DWGanttPdf() {
         });
       }
 
-      if (date.getDate() === date.getDaysInMonth() || i + 1 === data.dayCount) {
+      if (date.getDate() === date.getDaysInMonth() || i + 1 >= count) {
         // next month or end of scale
         pdf.drawBorder(topScaleRect, '#d1d1d1', dwPdf.Border.Right);
         pdf.drawText(moment(date).format("MMMM YYYY"), topScaleRect, {
@@ -178,7 +197,7 @@ function DWGanttPdf() {
 
     rect = {x: 0, y: TITLE_HEIGHT + SCALE_HEIGHT, w: width, h: LINE_HEIGHT};
     for (let i = 0; i < data.tasks.length; i++) {
-      await drawTask(pdf, data.tasks[i], rect, data);
+      await drawTask(pdf, data.tasks[i], data, rect, realWidth);
     }
 
     pdf.save(fileName, {returnPromise: true});
@@ -245,7 +264,7 @@ function DWGanttPdf() {
     });
   }
 
-  async function drawTask(pdf, task, rect, data) {
+  async function drawTask(pdf, task, data, rect, realWidth) {
     let fontName = task.children ? "Montserrat-SemiBold" : "Montserrat-Regular";
 
     pdf.drawBorder(rect, '#d1d1d1', dwPdf.Border.Bottom);
@@ -291,7 +310,8 @@ function DWGanttPdf() {
       fontName: fontName, fontSize: 12, fontColor: '#464646', hAlign: 'center', vAlign: 'middle'
     });
 
-    let taskRect = getRectByDate(pdf, pdf.rect(rect.x + GRID_WIDTH, rect.y + 5, rect.w - GRID_WIDTH, rect.h - 10),
+    let width = Math.min(realWidth, rect.w);
+    let taskRect = getRectByDate(pdf, pdf.rect(rect.x + GRID_WIDTH, rect.y + 5, width - GRID_WIDTH, rect.h - 10),
       task.startDate, task.endDate, data.startDate, data.endDate);
 
     if (task.isProject) {
